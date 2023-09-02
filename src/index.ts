@@ -1,6 +1,15 @@
 import express, { Express, Request, Response } from 'express';
 import dotenv from 'dotenv';
+
+// DB connection
 import connectDB from './ormconfig';
+
+// Routers
+import creditRouter from "./routers/credit.router"
+import balanceRouter from "./routers/balance.router"
+
+// Middleware
+import { auth } from './middleware/auth';
 
 dotenv.config();
 
@@ -9,10 +18,11 @@ const port = process.env.API_PORT;
 
 app.use(express.json());
 
-app.get('/', (req: Request, res: Response) => {
-    res.send('Hello world');
-});
+// Use routers
+app.use('/credits', auth, creditRouter);
+app.use('/balances', auth, balanceRouter);
 
+// Create connection with DB
 connectDB
     .initialize()
     .then(() => {

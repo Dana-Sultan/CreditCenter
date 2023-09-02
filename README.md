@@ -10,11 +10,13 @@ requests as follow:
 4. balanceOf(symbol, user) - returns the current balance of a user
 5. totalSupply(symbol) - returns the current total amount of all users together
 6. transfer(symbol, to, amount) - transfer credits from sender to other user (to), amounts indicated for the amount to be transferred.
+
 Nice to have:
 7. approve(symbol, to, amount) - delegates credits approval. In this case the sender gives
 permissions to transfer via a third party.
 8. allowance(symbol, from, to, amount) - the actual amount of delegation allowed.
 9. transferFrom(credit, from, to, amount) - use approvals / delegations for transfer.
+
 Notes:
 ● Mint & Burn allowed by credit owner only
 ● Negative amounts are illegal
