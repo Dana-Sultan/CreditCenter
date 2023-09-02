@@ -1,0 +1,28 @@
+{
+  "name": "credit-center",
+  "version": "1.0.0",
+  "description": "Credits Center Quiz In this quiz we are implementing a credits center that supports multiple credit scores. Any credit has its own symbol and it is a unique identifier, and has a balance for each user. Each HTTP request should include the header property “USERID” aka “sender”, that is used as authentication for the HTTP request. We use symbols as unique identifiers for credits. Each credit has an associated owner (by USERID) that has advanced permissions. Each endpoint gets symbol and “USERID” and handle requests as follow: 1. deploy(symbol) - creates a new credit score ledger with symbol as its unique identifier. It makes the “sender” as the credit’s “owner”. 2. mint(symbol, to, amount) - increase the balance of user (identified by “to”) by amount 3. burn(symbol, to, amount) - decrease the balance of user (identified by “to”) by amount 4. balanceOf(symbol, user) - returns the current balance of a user 5. totalSupply(symbol) - returns the current total amount of all users together 6. transfer(symbol, to, amount) - transfer credits from sender to other user (to), amounts indicated for the amount to be transferred. Nice to have: 7. approve(symbol, to, amount) - delegates credits approval. In this case the sender gives permissions to transfer via a third party. 8. allowance(symbol, from, to, amount) - the actual amount of delegation allowed. 9. transferFrom(credit, from, to, amount) - use approvals / delegations for transfer. Notes: ● Mint & Burn allowed by credit owner only ● Negative amounts are illegal ● Negative balances are illegal ● transferFrom can be taken only if sufficient credit were delegated ● Gives informative message responses where it needed An example starts next page >>",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "npx tsc",
+    "start": "node dist/index.js",
+    "dev": "concurrently \"npx tsc --watch\" \"nodemon -q dist/index.js\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "pg": "^8.11.3",
+    "reflect-metadata": "^0.1.13",
+    "typeorm": "^0.3.17"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.17",
+    "@types/node": "^20.5.7",
+    "concurrently": "^8.2.1",
+    "nodemon": "^3.0.1",
+    "typescript": "^5.2.2"
+  }
+}
