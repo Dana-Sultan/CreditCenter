@@ -8,7 +8,7 @@ const balanceRepo = new BalanceRepository();
 // Add amount to user's balance in the credit with the symbol
 router.post('/mint', async (req: any, res) => {
     try {
-        const { userId } = req.userId
+        const userId = req.userId;
         const { symbol, to, amount } = req.body;
 
         // Check if symbol to and amount exist
@@ -28,7 +28,7 @@ router.post('/mint', async (req: any, res) => {
 // Reduce amount to user's balance in the credit with the symbol
 router.post('/burn', async (req: any, res) => {
     try {
-        const { userId } = req.userId
+        const userId = req.userId;
         const { symbol, to, amount } = req.body;
 
         // Check if symbol to and amount exist
