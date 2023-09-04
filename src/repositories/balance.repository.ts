@@ -1,28 +1,26 @@
 import { Balance } from "../entities/balance.entity";
 import connectDB from "../ormconfig";
+import { ApprovalRepository } from "./approval.repository";
 import { CreditRepository } from "./credit.repository";
 
 export class BalanceRepository {
     private repository;
     private creditRepository: CreditRepository;
+    private approvalRepository: ApprovalRepository;
 
     constructor() {
         this.repository = connectDB.getRepository(Balance);
         this.creditRepository = new CreditRepository();
+        this.approvalRepository = new ApprovalRepository();
     }
 
     // Add amount to user's balance
-    async mint(userId: string, symbol: string, to: number, amount: number): Promise<Balance> {
+    async mint(symbol: string, to: number, amount: number): Promise<Balance> {
 
-        // Check if the credit symbol exists
+        // Check if the credit with the symbol exists
         const credit = await this.creditRepository.findBySymbol(symbol);
         if (!credit) {
             throw new Error('Credit with this symbol does not exist!');
-        }
-
-        // Check if the user trying to mint is the owner of the credit
-        if (credit.owner !== userId) {
-            throw new Error('You are not the owner of this credit');
         }
 
         // Check if the balance for the given user and symbol exists
@@ -47,7 +45,7 @@ export class BalanceRepository {
     }
 
     // Reduce amount to user's balance
-    async burn(userId: string, symbol: string, to: number, amount: number): Promise<Balance> {
+    async burn(symbol: string, to: number, amount: number): Promise<Balance> {
 
         // Check if the credit symbol exists
         const credit = await this.creditRepository.findBySymbol(symbol);
@@ -55,19 +53,8 @@ export class BalanceRepository {
             throw new Error('Credit with this symbol does not exist!');
         }
 
-        // Check if the user trying to burn is the owner of the credit
-        if (credit.owner !== userId) {
-            throw new Error('You are not the owner of this credit');
-        }
-
         // Check if the balance for the given user and symbol exists
-        const userBalance = await this.repository.findOne({
-            where: {
-                credit: { symbol: symbol },
-                userId: to
-            },
-            relations: ["credit"]
-        });
+        const userBalance = await this.repository.findOne({ where: { credit: { symbol: symbol }, userId: to } });
 
         // Check if user have balance for this credit
         if (!userBalance) {
@@ -89,20 +76,8 @@ export class BalanceRepository {
     // Get user's balance amount
     async balanceOf(symbol: string, userId: number): Promise<number> {
 
-        // Check if the credit symbol exists
-        const credit = await this.creditRepository.findBySymbol(symbol);
-        if (!credit) {
-            throw new Error('Credit with this symbol does not exist!');
-        }
-
         // Retrieve the balance for the given user and symbol
-        const userBalance = await this.repository.findOne({
-            where: {
-                credit: { symbol: symbol },
-                userId: userId
-            },
-            relations: ["credit"]
-        });
+        const userBalance = await this.repository.findOne({ where: { credit: { symbol: symbol }, userId: userId } });
 
         // If the user has no balance record for this symbol, return 0
         if (!userBalance) {
@@ -126,12 +101,6 @@ export class BalanceRepository {
     // Transfer amount from one user to another
     async transfer(symbol: string, fromUserId: number, toUserId: number, amount: number): Promise<void> {
 
-        // Check if the credit symbol exists
-        const credit = await this.creditRepository.findBySymbol(symbol);
-        if (!credit) {
-            throw new Error('Credit with this symbol does not exist!');
-        }
-
         // Check if the sender has sufficient funds
         const senderBalance = await this.repository.findOne({ where: { credit: { symbol: symbol }, userId: fromUserId } });
 
@@ -140,27 +109,40 @@ export class BalanceRepository {
         }
 
         // Subtract the amount from the sender
-        senderBalance.amount -= amount;
-        if (senderBalance.amount === 0) {
-            await this.repository.remove(senderBalance);
-        } else {
-            await this.repository.save(senderBalance);
-        }
+        await this.burn(symbol, fromUserId, amount);
 
         // Add the amount to the recipient's balance
-        const recipientBalance = await this.repository.findOne({ where: { credit: { symbol: symbol }, userId: toUserId } });
+        await this.mint(symbol, toUserId, amount);
+    }
 
-        if (recipientBalance) {
-            recipientBalance.amount += amount;
-            await this.repository.save(recipientBalance);
+    // Transfer with approval
+    async transferFrom(userId: number, symbol: string, from: number, to: number, amount: number): Promise<void> {
+
+        // Validate that an approval exists and is sufficient
+        const approval = await this.approvalRepository.findApproval(symbol, from, userId);
+        if (!approval || approval.amount < amount) {
+            throw new Error('Not enough approved credits for transfer.');
+        }
+
+        // Find the credit based on symbol
+        const credit = await this.creditRepository.findBySymbol(symbol);
+        if (!credit) {
+            throw new Error('Credit with this symbol does not exist!');
+        }
+
+        // Deduct amount from the 'from' user's balance
+        this.burn(symbol, from, amount);
+
+        // Add the amount to the 'to' user's balance
+        this.mint(symbol, to, amount)
+
+        // Update the approved amount
+        approval.amount -= amount;
+        if (approval.amount === 0) {
+            await this.approvalRepository.removeApproval(approval);
         } else {
-            // If the recipient doesn't have an existing balance for this credit, create one
-            const newBalance = new Balance();
-            newBalance.userId = toUserId;
-            newBalance.credit = credit;
-            newBalance.amount = amount;
-
-            await this.repository.save(newBalance);
+            // console.log(credit)
+            await this.approvalRepository.saveOrUpdateApproval(credit, approval.owner, approval.spender, approval.amount);
         }
     }
 }

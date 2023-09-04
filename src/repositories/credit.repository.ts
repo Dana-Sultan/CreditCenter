@@ -9,13 +9,14 @@ export class CreditRepository {
         this.repository = connectDB.getRepository(Credit);
     }
 
-    // Return credit by symbol
+    // Find credit by symbol
     async findBySymbol(symbol: string): Promise<Credit | null> {
         return this.repository.findOne({ where: { symbol } });
     }
 
     // Create new credit and save to DB
-    async deployCredit(symbol: string, owner: string): Promise<Credit> {
+    async deployCredit(symbol: string, owner: number): Promise<Credit> {
+
         // Check if the symbol already exists
         const existingCredit = await this.findBySymbol(symbol);
         if (existingCredit) {
