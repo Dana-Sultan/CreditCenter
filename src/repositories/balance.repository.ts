@@ -1,3 +1,4 @@
+import { EntityManager } from "typeorm";
 import { Balance } from "../entities/balance.entity";
 import connectDB from "../ormconfig";
 import { ApprovalRepository } from "./approval.repository";
@@ -7,15 +8,18 @@ export class BalanceRepository {
     private repository;
     private creditRepository: CreditRepository;
     private approvalRepository: ApprovalRepository;
+    private entityManager: EntityManager;
 
     constructor() {
         this.repository = connectDB.getRepository(Balance);
         this.creditRepository = new CreditRepository();
         this.approvalRepository = new ApprovalRepository();
+        this.entityManager = connectDB.manager;
     }
 
     // Add amount to user's balance
-    async mint(symbol: string, to: number, amount: number): Promise<Balance> {
+    async mint(symbol: string, to: number, amount: number, transactionalEntityManager?: EntityManager): Promise<Balance> {
+        const repo = transactionalEntityManager ? transactionalEntityManager.getRepository(Balance) : this.repository;
 
         // Check if the credit with the symbol exists
         const credit = await this.creditRepository.findBySymbol(symbol);
@@ -24,7 +28,7 @@ export class BalanceRepository {
         }
 
         // Check if the balance for the given user and symbol exists
-        const userBalance = await this.repository.findOne({ where: { credit: { symbol: symbol }, userId: to } });
+        const userBalance = await repo.findOne({ where: { credit: { symbol: symbol }, userId: to } });
 
         if (userBalance) {
             // If balance record exists, increase the balance
@@ -36,16 +40,17 @@ export class BalanceRepository {
             newBalance.credit = credit;
             newBalance.amount = amount;
 
-            await this.repository.save(newBalance);
+            await repo.save(newBalance);
             return newBalance;
         }
 
         // Save the updated or new balance
-        return await this.repository.save(userBalance);
+        return await repo.save(userBalance);
     }
 
-    // Reduce amount to user's balance
-    async burn(symbol: string, to: number, amount: number): Promise<Balance> {
+    // Subtract amount to user's balance
+    async burn(symbol: string, to: number, amount: number, transactionalEntityManager?: EntityManager): Promise<Balance> {
+        const repo = transactionalEntityManager ? transactionalEntityManager.getRepository(Balance) : this.repository;
 
         // Check if the credit symbol exists
         const credit = await this.creditRepository.findBySymbol(symbol);
@@ -54,7 +59,7 @@ export class BalanceRepository {
         }
 
         // Check if the balance for the given user and symbol exists
-        const userBalance = await this.repository.findOne({ where: { credit: { symbol: symbol }, userId: to } });
+        const userBalance = await repo.findOne({ where: { credit: { symbol: symbol }, userId: to } });
 
         // Check if user have balance for this credit
         if (!userBalance) {
@@ -70,7 +75,7 @@ export class BalanceRepository {
         userBalance.amount -= amount;
 
         // Save the updated balance
-        return await this.repository.save(userBalance);
+        return await repo.save(userBalance);
     }
 
     // Get user's balance amount
@@ -108,11 +113,21 @@ export class BalanceRepository {
             throw new Error('Insufficient funds for transfer.');
         }
 
-        // Subtract the amount from the sender
-        await this.burn(symbol, fromUserId, amount);
 
-        // Add the amount to the recipient's balance
-        await this.mint(symbol, toUserId, amount);
+        await this.entityManager.transaction(async transactionalEntityManager => {
+            // Subtract the amount from the sender
+            await this.burn(symbol, fromUserId, amount, transactionalEntityManager);
+
+            // Add the amount to the recipient's balance
+            await this.mint(symbol, toUserId, amount, transactionalEntityManager);
+        });
+
+
+        // // Subtract the amount from the sender
+        // await this.burn(symbol, fromUserId, amount);
+
+        // // Add the amount to the recipient's balance
+        // await this.mint(symbol, toUserId, amount);
     }
 
     // Transfer with approval
@@ -130,11 +145,19 @@ export class BalanceRepository {
             throw new Error('Credit with this symbol does not exist!');
         }
 
-        // Deduct amount from the 'from' user's balance
-        this.burn(symbol, from, amount);
+        await this.entityManager.transaction(async transactionalEntityManager => {
+            // Subtract the amount from the sender
+            await this.burn(symbol, from, amount, transactionalEntityManager);
 
-        // Add the amount to the 'to' user's balance
-        this.mint(symbol, to, amount)
+            // Add the amount to the recipient's balance
+            await this.mint(symbol, to, amount, transactionalEntityManager);
+        });
+
+        // // Deduct amount from the 'from' user's balance
+        // this.burn(symbol, from, amount);
+
+        // // Add the amount to the 'to' user's balance
+        // this.mint(symbol, to, amount)
 
         // Update the approved amount
         approval.amount -= amount;
