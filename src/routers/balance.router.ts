@@ -18,6 +18,11 @@ router.post('/mint', CheckUserIdValid, async (req: Request, res: Response) => {
             return res.status(400).json({ success: false, error: 'Symbol, to, and amount are required.' });
         }
 
+        // Check that amount is a positive number
+        if (amount < 0) {
+            return res.status(400).json({ success: false, error: 'Amount must be a positive number.' });
+        }
+
         const updatedBalance = await balanceRepo.mint(symbol, to, amount);
         res.status(200).json({ success: true, updatedBalance });
     } catch (error: any) {
@@ -34,6 +39,11 @@ router.post('/burn', CheckUserIdValid, async (req: Request, res: Response) => {
         // Check if symbol to and amount are provided
         if (!symbol || !to || !amount) {
             return res.status(400).json({ success: false, error: 'Symbol, to, and amount are required.' });
+        }
+
+        // Check that amount is a positive number
+        if (amount < 0) {
+            return res.status(400).json({ success: false, error: 'Amount must be a positive number.' });
         }
 
         const updatedBalance = await balanceRepo.burn(symbol, to, amount);
