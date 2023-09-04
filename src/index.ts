@@ -7,9 +7,7 @@ import connectDB from './ormconfig';
 // Routers
 import creditRouter from "./routers/credit.router"
 import balanceRouter from "./routers/balance.router"
-
-// Middleware
-import { auth } from './middleware/auth';
+import approvalRouter from "./routers/approval.router"
 
 dotenv.config();
 
@@ -19,8 +17,9 @@ const port = process.env.API_PORT;
 app.use(express.json());
 
 // Use routers
-app.use('/credits', auth, creditRouter);
-app.use('/balances', auth, balanceRouter);
+app.use('/credits', creditRouter);
+app.use('/balances', balanceRouter);
+app.use('/approvals', approvalRouter);
 
 // Create connection with DB
 connectDB
