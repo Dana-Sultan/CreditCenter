@@ -121,13 +121,6 @@ export class BalanceRepository {
             // Add the amount to the recipient's balance
             await this.mint(symbol, toUserId, amount, transactionalEntityManager);
         });
-
-
-        // // Subtract the amount from the sender
-        // await this.burn(symbol, fromUserId, amount);
-
-        // // Add the amount to the recipient's balance
-        // await this.mint(symbol, toUserId, amount);
     }
 
     // Transfer with approval
@@ -152,12 +145,6 @@ export class BalanceRepository {
             // Add the amount to the recipient's balance
             await this.mint(symbol, to, amount, transactionalEntityManager);
         });
-
-        // // Deduct amount from the 'from' user's balance
-        // this.burn(symbol, from, amount);
-
-        // // Add the amount to the 'to' user's balance
-        // this.mint(symbol, to, amount)
 
         // Update the approved amount
         approval.amount -= amount;
